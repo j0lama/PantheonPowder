@@ -2,7 +2,7 @@
 
 kube_description= \
 """
-Compute Cluster
+Pantheon deployment
 """
 kube_instruction= \
 """

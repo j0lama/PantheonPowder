@@ -11,7 +11,7 @@ fi
 sudo apt update -y
 sudo apt install -y python-yaml
 sudo add-apt-repository -y ppa:wireshark-dev/stable
-sudo apt install -y tshark
+sudo DEBIAN_FRONTEND=noninteractive apt install -y tshark
 
 sudo sysctl -w net.ipv4.ip_forward=1
 
