@@ -41,7 +41,7 @@ rspec.addTour(tour)
 
 # Machine
 machine = rspec.RawPC("pantheon")
-machine.disk_image = 'urn:publicid:IDN+emulab.net+image+emulab-ops:UBUNTU18-64-STD'
+machine.disk_image = 'urn:publicid:IDN+emulab.net+image+emulab-ops:UBUNTU16-64-STD'
 machine.hardware_type = params.Hardware
 machine.addService(PG.Execute(shell="bash", command="/local/repository/scripts/setup_pantheon.sh"))
 
