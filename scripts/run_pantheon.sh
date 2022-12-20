@@ -28,7 +28,7 @@ PANTHEON_OUTPUT_DIR=$BASE_DIR/pantheon/outputs/${PANTHEON_TRACE%.*}
 rm -Rf $PANTHEON_OUTPUT_DIR 2> /dev/null
 mkdir $PANTHEON_OUTPUT_DIR
 
-CC_SCHEMES="sprout cubic verus"
+CC_SCHEMES="bbr copa cubic pcc sprout vegas verus vivace"
 
 ./src/experiments/test.py local --schemes "$CC_SCHEMES" --uplink-trace ../tmp_pantheon_traces/$PANTHEON_TRACE --data-dir $PANTHEON_OUTPUT_DIR
 
@@ -36,6 +36,8 @@ CC_SCHEMES="sprout cubic verus"
 src/analysis/analyze.py --data-dir $PANTHEON_OUTPUT_DIR
 
 date
+echo ""
+echo ""
 echo "Pantheon emulation completed using: $CC_SCHEMES"
 echo "Run the following command to get the report:"
 echo "scp $(whoami)@$(hostname):$PANTHEON_OUTPUT_DIR/pantheon_report.pdf ."
