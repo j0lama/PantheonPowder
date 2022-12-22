@@ -34,11 +34,11 @@ src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sh
 src/experiments/setup.py --setup --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc"
 
 #Fixing Copa Bug
-cd ..
-diff -u pantheon/third_party/genericCC/markoviancc.cc markovian_update.cc > markov_patch.patch
-patch pantheon/third_party/genericCC/markoviancc.cc markov_patch.patch
-cd pantheon
-src/experiments/setup.py --setup --schemes "copa"
+#cd ..
+#diff -u pantheon/third_party/genericCC/markoviancc.cc markovian_update.cc > markov_patch.patch
+#patch pantheon/third_party/genericCC/markoviancc.cc markov_patch.patch
+#cd pantheon
+#src/experiments/setup.py --setup --schemes "copa"
 
 echo "Done"
 date
