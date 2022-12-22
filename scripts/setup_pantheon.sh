@@ -37,6 +37,8 @@ src/experiments/setup.py --setup --schemes "bbr copa cubic fillp fillp_sheep led
 cd ..
 diff -u pantheon/third_party/genericCC/markoviancc.cc markovian_update.cc > markov_patch.patch
 patch markoviancc.cc markov_patch.patch
+cd pantheon
+src/experiments/setup.py --setup --schemes "copa"
 
 echo "Done"
 date
