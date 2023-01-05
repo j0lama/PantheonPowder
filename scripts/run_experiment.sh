@@ -1,3 +1,5 @@
+cd pantheon
+
 src/experiments/setup.py --setup --schemes "sprout sprout-ewma sprout-ma sprout-sewma"
 
 
