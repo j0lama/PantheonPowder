@@ -43,7 +43,8 @@ src/experiments/setup.py --setup --schemes "copa"
 #Fixing Indigo
 #Note: The reason it is not working locally is because Tensorflow uses AVX instructions
 #      All computers do not support that computer architecture, but it seems that powder does.
-python -m pip install protobuf==3.17 --user 
+python -m pip install protobuf==3.17 --user
+src/experiments/setup.py --setup --schemes "indigo"
 
 echo "Done"
 date
