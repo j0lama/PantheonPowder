@@ -27,7 +27,7 @@ cd ..
 rm -Rf pantheon-tunnel/
 
 # Install Pantheon
-git clone https://github.com/StanfordSNR/pantheon.git
+git clone https://github.com/Fadi-B/Pantheon.git
 cd pantheon
 tools/fetch_submodules.sh
 src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc"
