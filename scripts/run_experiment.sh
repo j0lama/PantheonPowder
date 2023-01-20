@@ -12,5 +12,7 @@ src/experiments/test.py local --schemes "sprout sprout-ma cubic" --uplink-trace 
 
 #src/experiments/test.py local --schemes "sprout sprout-ma cubic" --uplink-trace /usr/share/mahimahi/traces/TMobile-UMTS-driving.up --downlink-trace /usr/share/mahimahi/traces/TMobile-UMTS-driving.down --data-dir DIR
 
+#src/experiments/test.py local --schemes "sprout sprout-ma cubic" --uplink-trace /usr/share/mahimahi/traces/Verizon-EVDO-driving.up --downlink-trace /usr/share/mahimahi/traces/Verizon-EVDO-driving.down --data-dir DIR
+#src/experiments/test.py local --schemes "sprout sprout-ma cubic" --uplink-trace /usr/share/mahimahi/traces/Verizon-LTE-driving.up --downlink-trace /usr/share/mahimahi/traces/Verizon-LTE-driving.down --data-dir DIR
 
 src/analysis/analyze.py --data-dir DIR
