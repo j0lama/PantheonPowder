@@ -2,7 +2,7 @@
 
 if [ -f "/local/ready" ]; then
     echo "Pantheon already installed."
-    cd /pantheon
+    cd /local/pantheon
     src/experiments/setup.py --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc"
     exit 1
 fi

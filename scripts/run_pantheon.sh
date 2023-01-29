@@ -6,7 +6,7 @@ if [ "$#" -ne 2 ]; then
     exit 1
 fi
 
-if [ ! -f "/ready" ]; then
+if [ ! -f "/local/ready" ]; then
     echo "Please wait, Pantheon is being installed."
     exit 1
 fi
