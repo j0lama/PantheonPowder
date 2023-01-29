@@ -1,11 +1,13 @@
 #!/bin/bash
 
-if [ -f "/ready" ]; then
+if [ -f "/local/ready" ]; then
     echo "Pantheon already installed."
     cd /pantheon
     src/experiments/setup.py --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc"
     exit 1
 fi
+
+BASE_DIR="/local"
 
 # Install dependencies
 sudo apt update -y
@@ -20,7 +22,7 @@ pip install numpy matplotlib
 python -m pip install protobuf==3.17 --user
 
 # Install Pantheon-tunnel
-cd /
+cd $BASE_DIR
 git clone https://github.com/StanfordSNR/pantheon-tunnel.git
 cd pantheon-tunnel/
 ./autogen.sh
@@ -32,21 +34,17 @@ rm -Rf pantheon-tunnel/
 
 # Install Pantheon
 git clone https://github.com/Fadi-B/pantheon.git
-
 cd pantheon
 tools/fetch_submodules.sh
-src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
+./src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
 
 #Fixing Copa Bug
-diff -u pantheon/third_party/genericCC/markoviancc.cc /local/repository/scripts/markovian_update.cc > markov_patch.patch
-patch pantheon/third_party/genericCC/markoviancc.cc markov_patch.patch
+diff -u $BASE_DIR/pantheon/third_party/genericCC/markoviancc.cc /local/repository/scripts/markovian_update.cc > markov_patch.patch
+patch $BASE_DIR/pantheon/third_party/genericCC/markoviancc.cc markov_patch.patch
 rm markov_patch.patch
 
-src/experiments/setup.py --setup --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
-
-cd ..
-chmod -R 777 pantheon
+./src/experiments/setup.py --setup --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
 
 echo "Done"
 date
-sudo touch /ready
+touch /local/ready
