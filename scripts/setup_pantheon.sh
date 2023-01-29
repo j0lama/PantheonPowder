@@ -44,6 +44,9 @@ rm markov_patch.patch
 
 src/experiments/setup.py --setup --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
 
+cd ..
+chmod -R 777 pantheon
+
 echo "Done"
 date
 sudo touch /ready
