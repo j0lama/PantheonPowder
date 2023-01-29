@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ -f "/local/repository/scripts/pantheon/ready" ]; then
+if [ -f "/pantheon/ready" ]; then
     echo "Pantheon already installed."
-    cd /local/repository/scripts/pantheon
+    cd /pantheon
     src/experiments/setup.py --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc"
     exit 1
 fi
@@ -16,7 +16,7 @@ sudo sysctl -w net.ipv4.ip_forward=1
 pip install numpy matplotlib
 
 # Install Pantheon-tunnel
-cd /local/repository/scripts/
+cd /
 git clone https://github.com/StanfordSNR/pantheon-tunnel.git
 cd pantheon-tunnel/
 ./autogen.sh
@@ -35,4 +35,4 @@ src/experiments/setup.py --setup --schemes "bbr copa cubic fillp fillp_sheep led
 
 echo "Done"
 date
-touch /local/repository/scripts/pantheon/ready
+touch pantheon/ready
