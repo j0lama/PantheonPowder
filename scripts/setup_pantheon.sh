@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -f "/pantheon/ready" ]; then
+if [ -f "/ready" ]; then
     echo "Pantheon already installed."
     cd /pantheon
     src/experiments/setup.py --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc"
@@ -33,16 +33,17 @@ rm -Rf pantheon-tunnel/
 # Install Pantheon
 git clone https://github.com/Fadi-B/pantheon.git
 
+cd pantheon
+tools/fetch_submodules.sh
+src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
+
 #Fixing Copa Bug
 diff -u pantheon/third_party/genericCC/markoviancc.cc /local/repository/scripts/markovian_update.cc > markov_patch.patch
 patch pantheon/third_party/genericCC/markoviancc.cc markov_patch.patch
 rm markov_patch.patch
 
-cd pantheon
-tools/fetch_submodules.sh
-src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
 src/experiments/setup.py --setup --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
 
 echo "Done"
 date
-touch pantheon/ready
+sudo touch /ready
