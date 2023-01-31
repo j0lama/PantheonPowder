@@ -11,7 +11,7 @@ BASE_DIR="/local"
 
 # Install dependencies
 sudo apt update -y
-sudo apt install -y python-yaml python-pip mahimahi texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
+sudo apt install -y python-yaml python-pip mahimahi texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra iperf3
 sudo add-apt-repository -y ppa:wireshark-dev/stable
 sudo DEBIAN_FRONTEND=noninteractive apt install -y tshark
 sudo sysctl -w net.ipv4.ip_forward=1
