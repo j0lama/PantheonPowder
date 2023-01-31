@@ -35,6 +35,10 @@ rm -Rf pantheon-tunnel/
 # Install Pantheon
 git clone https://github.com/Fadi-B/pantheon.git
 cd pantheon
+
+# Patch: remove the 3 second delay
+#sed -i "s/time.sleep(self.run_first_setup_time)/time.sleep(0)/g" ./src/experiments/test.py
+
 tools/fetch_submodules.sh
 ./src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
 
