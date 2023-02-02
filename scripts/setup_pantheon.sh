@@ -29,8 +29,7 @@ sudo sysctl -w net.ipv4.ip_forward=1
 pip2 install numpy matplotlib
 pip2 install pyyaml
 #Fixing Indigo
-#Note: The reason it is not working locally is because Tensorflow uses AVX instructions
-#      All computers do not support that computer architecture, but it seems that powder does.
+#Note: The reason it is not working locally is because Tensorflow uses AVX instructions. All computers do not support that computer architecture, but it seems that powder does.
 pip2 install protobuf==3.17 --user
 
 # Install Pantheon-tunnel
