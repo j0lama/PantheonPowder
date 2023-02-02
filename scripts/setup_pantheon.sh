@@ -32,7 +32,7 @@ pip install protobuf==3.17 --user
 
 # Install Pantheon-tunnel
 cd $BASE_DIR
-git clone https://github.com/StanfordSNR/pantheon-tunnel.git
+git clone https://github.com/j0lama/pantheon-tunnel.git
 cd pantheon-tunnel/
 ./autogen.sh
 ./configure
