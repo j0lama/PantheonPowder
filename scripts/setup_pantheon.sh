@@ -11,9 +11,15 @@ BASE_DIR="/local"
 
 # Install dependencies
 sudo apt update -y
-# Install Python2
-sudo apt install -y python2 python-pip
+
+# Install python2
+sudo apt install -y python2
 sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+
+# Install pip2
+wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
+sudo python get-pip.py
+rm get-pip.py
 
 # Install dependencies
 sudo apt install -y mahimahi texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra iperf3
