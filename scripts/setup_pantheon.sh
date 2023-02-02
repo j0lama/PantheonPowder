@@ -18,7 +18,7 @@ sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
 
 # Install pip2
 wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
-sudo python2 get-pip.py
+sudo python get-pip.py
 rm get-pip.py
 sudo ldconfig
 
