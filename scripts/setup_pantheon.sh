@@ -9,30 +9,22 @@ fi
 
 BASE_DIR="/local"
 
-# Install dependencies
+# Update repositories
 sudo apt update -y
 
-# Install python2
-sudo apt install -y python2
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
-
-# Install pip2
-wget https://bootstrap.pypa.io/pip/2.7/get-pip.py
-sudo python get-pip.py
-
 # Install dependencies
-sudo apt install -y mahimahi texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra iperf3
+sudo apt install -y python-yaml python-pip mahimahi texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra iperf3
 sudo add-apt-repository -y ppa:wireshark-dev/stable
 sudo DEBIAN_FRONTEND=noninteractive apt install -y tshark
 sudo sysctl -w net.ipv4.ip_forward=1
-pip install numpy matplotlib pyyaml
+pip install numpy matplotlib
 #Fixing Indigo
 #Note: The reason it is not working locally is because Tensorflow uses AVX instructions. All computers do not support that computer architecture, but it seems that powder does.
 pip install protobuf==3.17 --user
 
 # Install Pantheon-tunnel
 cd $BASE_DIR
-git clone https://github.com/j0lama/pantheon-tunnel.git
+git clone https://github.com/StanfordSNR/pantheon-tunnel.git
 cd pantheon-tunnel/
 ./autogen.sh
 ./configure
