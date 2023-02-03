@@ -13,6 +13,19 @@ if [ ! -f "/local/ready" ]; then
     exit 1
 fi
 
+# Compile and install BBR Oracle
+cd /local/repository/oracle_bbr/
+make
+KVERSION=$(uname -r)
+fpath="/local/repository/oracle_bbr/oracle.trace"
+echo "[ORACLE] Deploying oracle. Using $fpath"
+flen=$(wc -l < ${fpath})
+longestline=$(wc -L < ${fpath})
+fsize=$(wc -c < ${fpath})
+sudo cp oracle.ko /lib/modules/$KVERSION/kernel/net/ipv4/oracle.ko
+sudo rmmod /lib/modules/$KVERSION/kernel/net/ipv4/oracle.ko
+sudo insmod /lib/modules/$KVERSION/kernel/net/ipv4/oracle.ko filename=$fpath filesize=$fsize filelen=$flen longestline=$longestline
+
 BASE_DIR="/local"
 
 cd $BASE_DIR
