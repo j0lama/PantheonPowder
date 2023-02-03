@@ -44,7 +44,7 @@ tools/fetch_submodules.sh
 ./src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
 
 #Fixing Copa Bug
-diff -u $BASE_DIR/pantheon/third_party/genericCC/markoviancc.cc /local/repository/scripts/markovian_update.cc > markov_patch.patch
+diff -u $BASE_DIR/pantheon/third_party/genericCC/markoviancc.cc /local/repository/patches/markovian_update.cc > markov_patch.patch
 patch $BASE_DIR/pantheon/third_party/genericCC/markoviancc.cc markov_patch.patch
 rm markov_patch.patch
 

@@ -21,6 +21,9 @@ PCAP_BASENAME=$(basename -- "$1")
 PANTHEON_TRACE=${PCAP_BASENAME%.*}.x
 /local/repository/scripts/pcap_to_pantheon.py $1 $2 $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE
 
+# Generate oracle trace
+/local/repository/oracle_bbr/generate_oracle_trace.py $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE /local/repository/oracle_bbr/oracle.trace
+
 # Emulate with Pantheon
 mkdir -p outputs/
 PANTHEON_OUTPUT_DIR=$BASE_DIR/outputs/${PANTHEON_TRACE%.*}
