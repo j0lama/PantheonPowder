@@ -1,5 +1,7 @@
 #!/bin/bash
 
+CC_SCHEMES="bbr copa cubic pcc sprout vegas verus vivace oracle"
+
 if [ "$#" -ne 2 ]; then
     echo "USE: $0 <PCAP trace> <Destination IP>"
     echo "Example: ./run_pantheon.sh /local/repository/scripts/example.pcap 155.98.38.41"
@@ -29,8 +31,6 @@ mkdir -p outputs/
 PANTHEON_OUTPUT_DIR=$BASE_DIR/outputs/${PANTHEON_TRACE%.*}
 rm -Rf $PANTHEON_OUTPUT_DIR 2> /dev/null
 mkdir $PANTHEON_OUTPUT_DIR
-
-CC_SCHEMES="bbr copa cubic pcc sprout vegas verus vivace"
 
 cd pantheon/
 ./src/experiments/test.py local --schemes "$CC_SCHEMES" --uplink-trace $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE --data-dir $PANTHEON_OUTPUT_DIR

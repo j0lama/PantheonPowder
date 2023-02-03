@@ -1,9 +1,11 @@
 #!/bin/bash
 
+CC_SCHEMES="bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo oracle"
+
 if [ -f "/local/ready" ]; then
     echo "Pantheon already installed."
     cd /local/pantheon
-    src/experiments/setup.py --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc"
+    src/experiments/setup.py --schemes "$CC_SCHEMES"
     exit 1
 fi
 
@@ -41,14 +43,14 @@ cd pantheon
 #sed -i "s/time.sleep(self.run_first_setup_time)/time.sleep(0)/g" ./src/experiments/test.py
 
 tools/fetch_submodules.sh
-./src/experiments/setup.py --install-deps --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
+./src/experiments/setup.py --install-deps --schemes "$CC_SCHEMES"
 
 #Fixing Copa Bug
 diff -u $BASE_DIR/pantheon/third_party/genericCC/markoviancc.cc /local/repository/patches/markovian_update.cc > markov_patch.patch
 patch $BASE_DIR/pantheon/third_party/genericCC/markoviancc.cc markov_patch.patch
 rm markov_patch.patch
 
-./src/experiments/setup.py --setup --schemes "bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo"
+./src/experiments/setup.py --setup --schemes "$CC_SCHEMES"
 
 echo "Done"
 date

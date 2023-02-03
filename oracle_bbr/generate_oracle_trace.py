@@ -4,7 +4,7 @@ import numpy as np
 import csv
 import sys
 
-DEFAULT_MSS = 1400 * 8
+DEFAULT_MSS = 1500 * 8
 
 # This is the default value that Pantheon uses. In other words,
 #each bin will correspond to 0.5s
