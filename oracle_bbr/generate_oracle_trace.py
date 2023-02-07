@@ -98,5 +98,5 @@ if __name__ == '__main__':
         exit()
     
     # Get time series
-    rate, time, oracle_rate, oracle_time = process_trace(sys.argv[1])
+    rate, time, oracle_rate, oracle_time = process_trace(sys.argv[1], 40)
     oracle_to_file(sys.argv[2], oracle_rate)
