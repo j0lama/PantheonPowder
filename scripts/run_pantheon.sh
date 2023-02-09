@@ -28,16 +28,14 @@ PANTHEON_TRACE=${PCAP_BASENAME%.*}.x
 
 # Compile and install BBR Oracle
 cd /local/repository/oracle_bbr/
+TRACE="/local/repository/oracle_bbr/oracle.trace"
+echo "[ORACLE] Deploying oracle using $TRACE"
 make
-KVERSION=$(uname -r)
-fpath="/local/repository/oracle_bbr/oracle.trace"
-echo "[ORACLE] Deploying oracle using $fpath"
-flen=$(wc -l < ${fpath})
-longestline=$(wc -L < ${fpath})
-fsize=$(wc -c < ${fpath})
-sudo cp oracle.ko /lib/modules/$KVERSION/kernel/net/ipv4/oracle.ko
-sudo rmmod /lib/modules/$KVERSION/kernel/net/ipv4/oracle.ko
-sudo insmod /lib/modules/$KVERSION/kernel/net/ipv4/oracle.ko filename=$fpath filesize=$fsize filelen=$flen longestline=$longestline
+lsmod | grep "oracle" > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    sudo rmmod oracle
+fi
+sudo insmod oracle.ko filename=$TRACE lines=$(wc -l < ${TRACE})
 
 
 cd $BASE_DIR
