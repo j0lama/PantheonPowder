@@ -1141,9 +1141,6 @@ static void bbr_init(struct sock *sk)
 
 	cmpxchg(&sk->sk_pacing_status, SK_PACING_NONE, SK_PACING_NEEDED);
 
-	/* Load trace */
-	load_trace();
-
 	/* Store transmission start timestamp */
 	ktime_get_ts64(&transfer_start_time);
 }
@@ -1228,6 +1225,8 @@ static struct tcp_congestion_ops tcp_bbr_cong_ops __read_mostly = {
 static int __init bbr_register(void)
 {
 	BUILD_BUG_ON(sizeof(struct bbr) > ICSK_CA_PRIV_SIZE);
+	/* Load trace */
+	load_trace();
 	return tcp_register_congestion_control(&tcp_bbr_cong_ops);
 }
 
