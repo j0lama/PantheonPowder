@@ -62,6 +62,11 @@
 #include <linux/inet.h>
 #include <linux/random.h>
 #include <linux/win_minmax.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/moduleparam.h>
+#include <linux/fs.h>
+
 
 /* Scale factor for rate in pkt/uSec unit to avoid truncation in bandwidth
  * estimation. The rate unit ~= (1500 bytes / 1 usec / 2^24) ~= 715 bps.
@@ -191,6 +196,122 @@ static const u32 bbr_extra_acked_win_rtts = 5;
 static const u32 bbr_ack_epoch_acked_reset_thresh = 1U << 20;
 /* Time period for clamping cwnd increment due to ack aggregation */
 static const u32 bbr_extra_acked_max_us = 100 * 1000;
+
+
+
+/***********************************/
+/********* Oracle Extension *********/
+/***********************************/
+
+/* Globals */
+static int lines = -1;
+module_param(lines, int, 0660);
+
+static int line_max_len = 15;
+module_param(line_max_len, int, 0660);
+
+static char * filename = "/tmp/trace.csv";
+module_param(filename, charp, 0660);
+
+/* Timeserie with throughput values */
+int * ts = NULL;
+
+/* Timestamp at the beginngin of the transmission */
+struct timespec64 transfer_start_time;
+
+static void dump_trace(void)
+{
+    int i;
+
+    for(i = 0; i < lines; i++) {
+        pr_err("%d\n", ts[i]);
+    }
+    pr_err("Lines: %d\n", lines);
+}
+
+static void load_trace(void) {
+    struct file * f;
+    int i, j, ret;
+    char tmp[line_max_len+1];
+
+    f = filp_open(filename, O_RDONLY, 0);
+    if (IS_ERR(f)) {
+		lines = -1;
+        pr_err("Error openning %s (%ld)\n", filename, PTR_ERR(f));
+        return;
+    }
+
+    if(lines <= 0) {
+		lines = -1;
+        pr_err("Empty file %s\n", filename);
+        filp_close(f, NULL);
+        return;
+    }
+
+    /* Allocate memory for the timeserie */
+    ts = (int *) vzalloc(lines*sizeof(int));
+    if(ts == NULL) {
+		lines = -1;
+        pr_err("Error allocating memory\n");
+        filp_close(f, NULL);
+        return;
+    }
+
+    for(i = 0; i < lines; i++, j = 0) {
+        while(kernel_read(f, tmp + (j % line_max_len), 1, &f->f_pos) == 1) {
+            if(tmp[j % line_max_len] == '\n')
+                break;
+            j++;
+        }
+        tmp[(j % line_max_len)+1] = '\0'; /* Adding NULL byte after \n to meet with kstrtoint requirements */
+        if((ret = kstrtoint(tmp, 10, ts+i)) < 0) {
+            if(ret == -ERANGE)
+                pr_err("Integer overflow in line %d\n", i);
+            else if(ret == -EINVAL)
+                pr_err("Parsing error in line %d\n", i);
+            else
+                pr_err("Unkwown error (%d) parsing line %d\n", ret, i);
+        }
+    }
+    /* Close file */
+    filp_close(f, NULL);
+    return;
+}
+
+static u64 get_trace_bw(void)
+{
+	struct timespec64 now, diff;
+	u32 ms;
+
+	/* Compute milliseconds since the beginning of the transmission */
+	ktime_get_ts64(&now);
+	diff = timespec64_sub(now, transfer_start_time);
+	ms = diff.tv_sec*MSEC_PER_SEC + div_u64(diff.tv_nsec, NSEC_PER_MSEC);
+
+	/* Access trace timeserie */
+	if(ms >= lines) /* This condition is true if the trace cannot be loaded */
+		return 0;
+	return (u64) ts[ms];
+}
+
+/* Scale a trace value to BW units use din BBR */
+static u64 trace_to_bw(u32 mss, u64 trace)
+{
+	/* Scale bandwidth */
+	trace <<= BW_SCALE;
+	/* Convert to microseconds */
+	do_div(trace, USEC_PER_SEC);
+	/* Divide by MSS */
+	do_div(trace, mss);
+	return trace;
+}
+
+/*******************************************/
+/********* End of Oracle Extension *********/
+/*******************************************/
+
+
+
 
 static void bbr_check_probe_rtt_done(struct sock *sk);
 
@@ -724,7 +845,7 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct bbr *bbr = inet_csk_ca(sk);
-	u64 bw;
+	u64 bw, trace;
 
 	bbr->round_start = 0;
 	if (rs->delivered < 0 || rs->interval_us <= 0)
@@ -740,11 +861,20 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 
 	bbr_lt_bw_sampling(sk, rs);
 
-	/* Divide delivered by the interval to find a (lower bound) bottleneck
-	 * bandwidth sample. Delivered is in packets and interval_us in uS and
-	 * ratio will be <<1 for most connections. So delivered is first scaled.
-	 */
-	bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
+	/* Get bw from trace */
+	trace = get_trace_bw();
+
+	/* Check if  */
+	if(bw != 0 && bbr->mode == BBR_PROBE_BW)
+		bw = trace_to_bw(tcp_sk(sk)->mss_cache, trace);
+	else {
+		/* Divide delivered by the interval to find a (lower bound) bottleneck
+		* bandwidth sample. Delivered is in packets and interval_us in uS and
+		* ratio will be <<1 for most connections. So delivered is first scaled.
+		* bw is in pkts/uS << 24
+		*/
+		bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
+	}
 
 	/* If this sample is application-limited, it is likely to have a very
 	 * low delivered count that represents application behavior rather than
@@ -1010,6 +1140,12 @@ static void bbr_init(struct sock *sk)
 	bbr->extra_acked[1] = 0;
 
 	cmpxchg(&sk->sk_pacing_status, SK_PACING_NONE, SK_PACING_NEEDED);
+
+	/* Load trace */
+	load_trace();
+
+	/* Store transmission start timestamp */
+	ktime_get_ts64(&transfer_start_time);
 }
 
 static u32 bbr_sndbuf_expand(struct sock *sk)
