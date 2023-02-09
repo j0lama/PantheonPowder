@@ -35,7 +35,7 @@ lsmod | grep "oracle" > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     sudo rmmod oracle
 fi
-sudo insmod oracle.ko filename=$TRACE lines=$(wc -l < ${TRACE})
+sudo insmod oracle.ko filename=$TRACE lines=$(wc -l < ${TRACE} | awk '{print $1}')
 
 
 cd $BASE_DIR
