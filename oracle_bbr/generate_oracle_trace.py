@@ -52,40 +52,20 @@ def convert_bins_into_link_rate(capacities, ms_per_bin):
     return link_capacity, link_capacity_times
 
 def generate_oracle_timeseries(rate, ms_per_bin):
+    trim = 3.030
+    N = 1
+    avg_rate = np.convolve(rate, np.ones((N,))/N, mode='valid')
     oracle_rate = []
-    for r in rate:
+    for r in avg_rate:
         oracle_rate += [r, ] * ms_per_bin
     oracle_time = [x/1000 for x in range(len(oracle_rate))]
-    return oracle_rate, oracle_time
+    return oracle_rate[int(trim*1000):], [x-trim for x in oracle_time[int(trim*1000):]]
 
 def process_trace(file, ms_per_bin=500):
     capacities = get_bin_capacities(file, ms_per_bin)
     rate, time = convert_bins_into_link_rate(capacities, ms_per_bin)
     oracle_rate, oracle_time = generate_oracle_timeseries(rate, ms_per_bin)
     return rate, time, oracle_rate, oracle_time
-
-#Store the values in a csv file
-def store_to_csv(rate, time, ms_per_bin, filename, version="throughput"):
-    byte_data = ((ms_per_bin*1000) * np.array(rate)) / 8 
-    if (version == "throughput"):
-        combined = np.hstack((np.array(time)[:,None], np.array(rate)[:,None]))
-    else:
-        combined = np.hstack((np.array(time)[:,None], np.array(byte_data)[:,None]))
-        #combined = np.array(byte_data)[:,None]
-    start = True
-
-    with open(filename, "w") as file:
-        writer = csv.writer(file)
-        if (start):
-            if (version == "throughput"):
-                writer.writerows([["Time", "Rate"]])
-            elif (version == "bytes"):
-                #pass
-                writer.writerows([["Time", "Bytes"]])
-            else:
-                raise Exception("ERROR: INVALID VERSION PROVIDED")
-            start = False
-        writer.writerows(combined)
 
 def oracle_to_file(output, oracle_rate):
     with open(output, 'w') as f:
@@ -98,5 +78,5 @@ if __name__ == '__main__':
         exit()
     
     # Get time series
-    rate, time, oracle_rate, oracle_time = process_trace(sys.argv[1], 40)
+    rate, time, oracle_rate, oracle_time = process_trace(sys.argv[1], 50)
     oracle_to_file(sys.argv[2], [int(x*1000000) for x in oracle_rate])

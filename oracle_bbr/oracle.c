@@ -219,15 +219,8 @@ int * ts = NULL;
 /* Timestamp at the beginngin of the transmission */
 struct timespec64 transfer_start_time;
 
-static void dump_trace(void)
-{
-    int i;
-
-    for(i = 0; i < lines; i++) {
-        pr_err("%d\n", ts[i]);
-    }
-    pr_err("Lines: %d\n", lines);
-}
+/* Latest throughput estimation */
+u64 latest_bw = 0;
 
 static void load_trace(void) {
     struct file * f;
@@ -237,13 +230,13 @@ static void load_trace(void) {
     f = filp_open(filename, O_RDONLY, 0);
     if (IS_ERR(f)) {
 		lines = -1;
-        pr_err("Error openning %s (%ld)\n", filename, PTR_ERR(f));
+        pr_err("[ORACLE] Error openning %s (%ld)\n", filename, PTR_ERR(f));
         return;
     }
 
     if(lines <= 0) {
 		lines = -1;
-        pr_err("Empty file %s\n", filename);
+        pr_err("[ORACLE] Empty file %s\n", filename);
         filp_close(f, NULL);
         return;
     }
@@ -252,7 +245,7 @@ static void load_trace(void) {
     ts = (int *) vzalloc(lines*sizeof(int));
     if(ts == NULL) {
 		lines = -1;
-        pr_err("Error allocating memory\n");
+        pr_err("[ORACLE] Error allocating memory\n");
         filp_close(f, NULL);
         return;
     }
@@ -266,13 +259,14 @@ static void load_trace(void) {
         tmp[(j % line_max_len)+1] = '\0'; /* Adding NULL byte after \n to meet with kstrtoint requirements */
         if((ret = kstrtoint(tmp, 10, ts+i)) < 0) {
             if(ret == -ERANGE)
-                pr_err("Integer overflow in line %d\n", i);
+                pr_err("[ORACLE] Integer overflow in line %d\n", i);
             else if(ret == -EINVAL)
-                pr_err("Parsing error in line %d\n", i);
+                pr_err("[ORACLE] Parsing error in line %d\n", i);
             else
-                pr_err("Unkwown error (%d) parsing line %d\n", ret, i);
+                pr_err("[ORACLE] Unkwown error (%d) parsing line %d\n", ret, i);
         }
     }
+	pr_info("[ORACLE] File loaded: %s (%d)\n", filename, lines);
     /* Close file */
     filp_close(f, NULL);
     return;
@@ -291,18 +285,20 @@ static u64 get_trace_bw(void)
 	/* Access trace timeserie */
 	if(ms >= lines) /* This condition is true if the trace cannot be loaded */
 		return 0;
+	//printk_ratelimited(KERN_ALERT "ixd: %d\n", ms);
 	return (u64) ts[ms];
 }
 
-/* Scale a trace value to BW units use din BBR */
-static u64 trace_to_bw(u32 mss, u64 trace)
+/* Scale a trace value to BW units used in BBR */
+static u64 trace_to_bw(u32 mtu, u64 trace)
 {
 	/* Scale bandwidth */
 	trace <<= BW_SCALE;
 	/* Convert to microseconds */
 	do_div(trace, USEC_PER_SEC);
-	/* Divide by MSS */
-	do_div(trace, mss);
+	//trace <<= BBR_SCALE;
+	/* Divide by MTU (1464) * 8 */
+	do_div(trace, mtu*8);
 	return trace;
 }
 
@@ -865,8 +861,13 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 	trace = get_trace_bw();
 
 	/* Check if  */
-	if(bw != 0 && bbr->mode == BBR_PROBE_BW)
-		bw = trace_to_bw(tcp_sk(sk)->mss_cache, trace);
+	if(trace != 0 && bbr->mode == BBR_PROBE_BW) {
+		bw = trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
+		latest_bw = bw*100;
+		do_div(latest_bw, 100);
+		/* bw has to be scaled up (BBR_SCALE) and multiplied by 8 to get bits per second */
+		//printk_ratelimited(KERN_ALERT "%llu -> (%llu) -> %llu\n", trace, bw, bbr_rate_bytes_per_sec(sk, bw<<BBR_SCALE, 1)*8);
+	}
 	else {
 		/* Divide delivered by the interval to find a (lower bound) bottleneck
 		* bandwidth sample. Delivered is in packets and interval_us in uS and
@@ -1093,8 +1094,8 @@ static void bbr_main(struct sock *sk, const struct rate_sample *rs)
 	u32 bw;
 
 	bbr_update_model(sk, rs);
-
 	bw = bbr_bw(sk);
+	bw = latest_bw;
 	bbr_set_pacing_rate(sk, bw, bbr->pacing_gain);
 	bbr_set_tso_segs_goal(sk);
 	bbr_set_cwnd(sk, rs, rs->acked_sacked, bw, bbr->cwnd_gain);
