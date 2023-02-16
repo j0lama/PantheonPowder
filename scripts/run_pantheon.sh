@@ -8,7 +8,7 @@ CC_SCHEMES="bbr oracle" #copa verus
 if [ "$#" -gt 2 ] || [ "$#" -lt 1 ]; then
     echo "USE: $0 <Trace (PCAP or Pantheon)> <Destination IP (Only for PCAP)>"
     echo "Example: ./run_pantheon.sh /local/repository/scripts/example.pcap 155.98.38.41"
-    echo "Example: ./run_pantheon.sh /local/repository/scripts/example.pcap 155.98.38.41"
+    echo "Example: ./run_pantheon.sh /local/repository/scripts/4gbusserver.pcap 155.98.38.105"
     echo "Example: ./run_pantheon.sh /usr/share/mahimahi/traces/TMobile-LTE-driving.up"
     exit 1
 fi
