@@ -17,9 +17,6 @@ def bin_to_sec(bin_ID, ms_per_bin):
 def getTimestamp(line):
     return float(line)
 
-def getSize(line):
-    pass
-
 def get_bin_capacities(file, ms_per_bin):
     capacities = {}
 
@@ -52,9 +49,10 @@ def convert_bins_into_link_rate(capacities, ms_per_bin):
     return link_capacity, link_capacity_times
 
 def generate_oracle_timeseries(rate, ms_per_bin):
-    trim = 3.030
-    N = 1
+    trim = 3.128
+    N = 3
     avg_rate = np.convolve(rate, np.ones((N,))/N, mode='valid')
+    #avg_rate = np.convolve(rate, np.array([0.15, 0.7, 0.15]), mode='valid')
     oracle_rate = []
     for r in avg_rate:
         oracle_rate += [r, ] * ms_per_bin
@@ -78,5 +76,5 @@ if __name__ == '__main__':
         exit()
     
     # Get time series
-    rate, time, oracle_rate, oracle_time = process_trace(sys.argv[1], 50)
+    rate, time, oracle_rate, oracle_time = process_trace(sys.argv[1], 60)
     oracle_to_file(sys.argv[2], [int(x*1000000) for x in oracle_rate])

@@ -11,7 +11,27 @@ def tshark(pcap, ip):
 def generateOutput(lines, file):
     output = ''
     for l in lines:
-        output += str(int(float(l.split()[0])*1000)) + '\n'
+        val = int(float(l.split()[0])*1000)
+        output += str(val) + '\n'
+    with open(file, 'w') as f:
+        f.write(output)
+
+def generateOutputNoGaps(lines, file):
+    output = ''
+    vals = {}
+    for l in lines:
+        v = int(float(l.split()[0])*1000)
+        if v in vals:
+            vals[v] += 1
+        else:
+            vals[v] = 1
+    for i in range(v):
+        if not i in vals:
+            vals[i] = 1
+    for i in range(v):
+        for j in range(vals[i]):
+            output += str(i) + '\n'
+    
     with open(file, 'w') as f:
         f.write(output)
 

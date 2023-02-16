@@ -1,13 +1,15 @@
 #!/bin/bash
 
 
-# bbr copa cubic pcc sprout vegas verus vivace indigo oracle
-CC_SCHEMES="oracle bbr"
+# bbr copa cubic fillp fillp_sheep ledbat pcc pcc_experimental quic scream sprout taova vegas verus vivace webrtc indigo oracle
+# bbr copa cubic ledbat sprout taova vegas verus vivace indigo oracle
+CC_SCHEMES="bbr oracle" #copa verus
 
 if [ "$#" -gt 2 ] || [ "$#" -lt 1 ]; then
     echo "USE: $0 <Trace (PCAP or Pantheon)> <Destination IP (Only for PCAP)>"
     echo "Example: ./run_pantheon.sh /local/repository/scripts/example.pcap 155.98.38.41"
-    echo "Example: ./run_pantheon.sh /local/repository/scripts/pantheon.x"
+    echo "Example: ./run_pantheon.sh /local/repository/scripts/example.pcap 155.98.38.41"
+    echo "Example: ./run_pantheon.sh /usr/share/mahimahi/traces/TMobile-LTE-driving.up"
     exit 1
 fi
 

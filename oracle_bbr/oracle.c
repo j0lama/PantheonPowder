@@ -217,7 +217,7 @@ module_param(filename, charp, 0660);
 int * ts = NULL;
 
 /* Timestamp at the beginngin of the transmission */
-struct timespec64 transfer_start_time;
+struct timespec64 transfer_start_time = {.tv_sec = 0, .tv_nsec = 0};
 
 /* Latest throughput estimation */
 u64 latest_bw = 0;
@@ -272,21 +272,26 @@ static void load_trace(void) {
     return;
 }
 
-static u64 get_trace_bw(void)
+static u32 get_time_diff(void)
 {
 	struct timespec64 now, diff;
-	u32 ms;
 
 	/* Compute milliseconds since the beginning of the transmission */
 	ktime_get_ts64(&now);
 	diff = timespec64_sub(now, transfer_start_time);
-	ms = diff.tv_sec*MSEC_PER_SEC + div_u64(diff.tv_nsec, NSEC_PER_MSEC);
+	return diff.tv_sec*MSEC_PER_SEC + div_u64(diff.tv_nsec, NSEC_PER_MSEC);
+}
 
+static u64 get_trace_bw(struct bbr * bbr)
+{
+	u32 idx;
+
+	idx = get_time_diff();
 	/* Access trace timeserie */
-	if(ms >= lines) /* This condition is true if the trace cannot be loaded */
+	if(idx >= lines) /* This condition is true if the trace cannot be loaded */
 		return 0;
 	//printk_ratelimited(KERN_ALERT "ixd: %d\n", ms);
-	return (u64) ts[ms];
+	return (u64) ts[idx];
 }
 
 /* Scale a trace value to BW units used in BBR */
@@ -296,7 +301,6 @@ static u64 trace_to_bw(u32 mtu, u64 trace)
 	trace <<= BW_SCALE;
 	/* Convert to microseconds */
 	do_div(trace, USEC_PER_SEC);
-	//trace <<= BBR_SCALE;
 	/* Divide by MTU (1464) * 8 */
 	do_div(trace, mtu*8);
 	return trace;
@@ -589,12 +593,16 @@ static bool bbr_set_cwnd_to_recover_or_restore(
 /* Slow-start up toward target cwnd (if bw estimate is growing, or packet loss
  * has drawn us down below target), or snap down to target if we're above it.
  */
+/* This function is where the congestion window is calculated and set */
 static void bbr_set_cwnd(struct sock *sk, const struct rate_sample *rs,
 			 u32 acked, u32 bw, int gain)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct bbr *bbr = inet_csk_ca(sk);
 	u32 cwnd = 0, target_cwnd = 0;
+	u32 idx;
+
+	idx = get_time_diff();
 
 	if (!acked)
 		return;
@@ -616,11 +624,16 @@ static void bbr_set_cwnd(struct sock *sk, const struct rate_sample *rs,
 	else if (cwnd < target_cwnd || tp->delivered < TCP_INIT_CWND)
 		cwnd = cwnd + acked;
 	cwnd = max(cwnd, bbr_cwnd_min_target);
-
 done:
 	tp->snd_cwnd = min(cwnd, tp->snd_cwnd_clamp);	/* apply global cap */
 	if (bbr->mode == BBR_PROBE_RTT)  /* drain queue, refresh min_rtt */
 		tp->snd_cwnd = min(tp->snd_cwnd, bbr_cwnd_min_target);
+	
+	/* If bw is zero, force cwnd to be 0 */
+	if(bw == 0)
+		tp->snd_cwnd = 0;
+	if (tp->snd_cwnd < 10)
+		printk_ratelimited(KERN_ALERT "idx (%d), cwnd (%d), target(%d)\n", idx, tp->snd_cwnd, target_cwnd);
 }
 
 /* End cycle phase if it's time and/or we hit the phase's in-flight target. */
@@ -858,24 +871,25 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 	bbr_lt_bw_sampling(sk, rs);
 
 	/* Get bw from trace */
-	trace = get_trace_bw();
+	trace = get_trace_bw(bbr);
+	bw = trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
+	latest_bw = bw;
 
 	/* Check if  */
-	if(trace != 0 && bbr->mode == BBR_PROBE_BW) {
-		bw = trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
-		latest_bw = bw*100;
-		do_div(latest_bw, 100);
-		/* bw has to be scaled up (BBR_SCALE) and multiplied by 8 to get bits per second */
-		//printk_ratelimited(KERN_ALERT "%llu -> (%llu) -> %llu\n", trace, bw, bbr_rate_bytes_per_sec(sk, bw<<BBR_SCALE, 1)*8);
-	}
-	else {
-		/* Divide delivered by the interval to find a (lower bound) bottleneck
-		* bandwidth sample. Delivered is in packets and interval_us in uS and
-		* ratio will be <<1 for most connections. So delivered is first scaled.
-		* bw is in pkts/uS << 24
-		*/
-		bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
-	}
+	//if(trace != 0 && bbr->mode == BBR_PROBE_BW) {
+	//	bw = trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
+	//	latest_bw = bw;
+	//	/* bw has to be scaled up (BBR_SCALE) and multiplied by 8 to get bits per second */
+	//	//printk_ratelimited(KERN_ALERT "%llu -> (%llu) -> %llu\n", trace, bw, bbr_rate_bytes_per_sec(sk, bw<<BBR_SCALE, 1)*8);
+	//}
+	//else {
+	//	/* Divide delivered by the interval to find a (lower bound) bottleneck
+	//	* bandwidth sample. Delivered is in packets and interval_us in uS and
+	//	* ratio will be <<1 for most connections. So delivered is first scaled.
+	//	* bw is in pkts/uS << 24
+	//	*/
+	//	bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
+	//}
 
 	/* If this sample is application-limited, it is likely to have a very
 	 * low delivered count that represents application behavior rather than
@@ -1040,6 +1054,10 @@ static void bbr_update_min_rtt(struct sock *sk, const struct rate_sample *rs)
 	/* Track min RTT seen in the min_rtt_win_sec filter window: */
 	filter_expired = after(tcp_jiffies32,
 			       bbr->min_rtt_stamp + bbr_min_rtt_win_sec * HZ);
+	
+	/* Force BBR to never go into PROBE_RTT from PROBE_BW */
+	filter_expired = 0;
+
 	if (rs->rtt_us >= 0 &&
 	    (rs->rtt_us < bbr->min_rtt_us || filter_expired)) {
 		bbr->min_rtt_us = rs->rtt_us;
@@ -1080,7 +1098,7 @@ static void bbr_update_min_rtt(struct sock *sk, const struct rate_sample *rs)
 
 static void bbr_update_model(struct sock *sk, const struct rate_sample *rs)
 {
-	bbr_update_bw(sk, rs);
+	bbr_update_bw(sk, rs); /* Estimate the bandwidth based on how fast packets are delivered */
 	bbr_update_ack_aggregation(sk, rs);
 	bbr_update_cycle_phase(sk, rs);
 	bbr_check_full_bw_reached(sk, rs);
@@ -1105,6 +1123,9 @@ static void bbr_init(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct bbr *bbr = inet_csk_ca(sk);
+
+	/* Store transmission start timestamp */
+	ktime_get_ts64(&transfer_start_time);
 
 	bbr->prior_cwnd = 0;
 	bbr->tso_segs_goal = 0;	 /* default segs per skb until first ACK */
@@ -1141,9 +1162,6 @@ static void bbr_init(struct sock *sk)
 	bbr->extra_acked[1] = 0;
 
 	cmpxchg(&sk->sk_pacing_status, SK_PACING_NONE, SK_PACING_NEEDED);
-
-	/* Store transmission start timestamp */
-	ktime_get_ts64(&transfer_start_time);
 }
 
 static u32 bbr_sndbuf_expand(struct sock *sk)
