@@ -38,7 +38,7 @@ elif [ "$EXTENSION" == "pcap" ] && [ "$#" -eq 2 ]; then # PCAP + IP: generate pa
     # Generate oracle trace
     #/local/repository/oracle_bbr/generate_oracle_trace.py $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE /local/repository/oracle_bbr/oracle.trace
     # Process PCAP and generate pantheon trace and trimmed oracle trace
-    ./process_trace.py -t $1 -s $2 -p $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE -o /local/repository/oracle_bbr/oracle.trace
+    /local/repository/scripts/process_trace.py -t $1 -s $2 -p $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE -o /local/repository/oracle_bbr/oracle.trace
 elif [ "$EXTENSION" == "pcap" ] && [ "$#" -eq 3 ]; then # PCAP + IP + Oracle trace: generate pantheon trace from pcap
     echo "Processing PCAP trace..."
     # Generating Pantheon trace out of a PCAP trace
@@ -46,12 +46,12 @@ elif [ "$EXTENSION" == "pcap" ] && [ "$#" -eq 3 ]; then # PCAP + IP + Oracle tra
     PANTHEON_TRACE=${PCAP_BASENAME%.*}.x
     #/local/repository/scripts/pcap_to_pantheon.py $1 $2 $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE
     # Generate Pantheon trace from PCAP
-    ./process_trace.py -t $1 -s $2 -p $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE
+    /local/repository/scripts/process_trace.py -t $1 -s $2 -p $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE
     # Copy Oracle trace to destination and trim
     #cp $3 /local/repository/oracle_bbr/oracle.trace
     #python /local/repository/scripts/trim_trace.py /local/repository/oracle_bbr/oracle.trace 3.128
     # Trim oracle trace
-    ./process_trace.py -t $3 -o /local/repository/oracle_bbr/oracle.trace
+    /local/repository/scripts/process_trace.py -t $3 -o /local/repository/oracle_bbr/oracle.trace
 else # Pantheon trace
     echo "Processing Pantheon trace..."
     PCAP_BASENAME=$(basename -- "$1")
@@ -60,7 +60,7 @@ else # Pantheon trace
     # Generate oracle trace
     #/local/repository/oracle_bbr/generate_oracle_trace.py $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE /local/repository/oracle_bbr/oracle.trace
     # From pantheon trace, generate pantheon trace and trimmed oracle trace
-    ./process_trace.py -t $1 -p $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE -o /local/repository/oracle_bbr/oracle.trace
+    /local/repository/scripts/process_trace.py -t $1 -p $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE -o /local/repository/oracle_bbr/oracle.trace
 fi
 
 
