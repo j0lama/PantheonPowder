@@ -68,11 +68,11 @@ fi
 cd /local/repository/oracle_bbr/
 TRACE="/local/repository/oracle_bbr/oracle.trace"
 echo "[ORACLE] Deploying oracle using $TRACE"
-make
-while [ $(lsmod | grep oracle | awk '{print $3}') == "1" ]; do
+while [ "$(lsmod | grep oracle | awk '{print $3}')" == "1" ]; do
     echo "Waiting to unload Oracle kernel module..."
     sleep 1
 done
+make
 lsmod | grep "oracle" > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     sudo rmmod oracle
