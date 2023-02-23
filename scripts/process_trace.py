@@ -84,7 +84,7 @@ if __name__ == '__main__':
 
     if args.trace.endswith('.pcap') and args.server_ip and args.pantheon_output:
         ts = process_pcap(args.trace, args.server_ip)
-        generate_pantheon_trace(pd.DataFrame(ts).iloc[:, 0].rolling(10, min_periods=1).mean().values.tolist(), args.pantheon_output)
+        generate_pantheon_trace(pd.DataFrame(ts).iloc[:, 0].rolling(20, min_periods=1).mean().values.tolist(), args.pantheon_output)
         if args.oracle_output:
             generate_oracle_trace(pd.DataFrame(ts).iloc[:, 0].rolling(100, min_periods=1).mean().values.tolist(), args.oracle_output)
     # Generate a pantheon trace from a pantheon trace

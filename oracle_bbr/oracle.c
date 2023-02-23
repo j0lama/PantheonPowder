@@ -633,7 +633,7 @@ done:
 	if(bw == 0)
 		tp->snd_cwnd = 0;
 	if (tp->snd_cwnd < 10)
-		printk_ratelimited(KERN_ALERT "idx (%d), cwnd (%d), target(%d)\n", idx, tp->snd_cwnd, target_cwnd);
+		printk_ratelimited(KERN_INFO "idx (%d): cwnd (%d)\n", idx, tp->snd_cwnd);
 }
 
 /* End cycle phase if it's time and/or we hit the phase's in-flight target. */
