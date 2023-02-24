@@ -9,7 +9,8 @@ import numpy as np
 window = 100
 fixed_pkt_size = False
 packet_size = 1500*8
-trim = 3.128
+trim = 4.000
+trim_oracle = 3.975
 max_ts_len = 40000
 
 def store_trace(path, tp):
@@ -51,7 +52,7 @@ def process_oracle_trace(oracle_trace):
         lines = f.readlines()
         for l in lines:
             tmp.append(int(l))
-    return tmp[int(trim*1000):]
+    return tmp[int(trim_oracle*1000):]
 
 def generate_pantheon_trace(tp, pantheon_out):
     freq = [0,]*len(tp)
@@ -86,7 +87,7 @@ if __name__ == '__main__':
         ts = process_pcap(args.trace, args.server_ip)
         generate_pantheon_trace(pd.DataFrame(ts).iloc[:, 0].rolling(20, min_periods=1).mean().values.tolist(), args.pantheon_output)
         if args.oracle_output:
-            generate_oracle_trace(pd.DataFrame(ts).iloc[:, 0].rolling(100, min_periods=1).mean().values.tolist(), args.oracle_output)
+            generate_oracle_trace(pd.DataFrame(ts).iloc[:, 0].rolling(65, min_periods=1).mean().values.tolist(), args.oracle_output)
     # Generate a pantheon trace from a pantheon trace
     elif not args.trace.endswith('.pcap') and args.pantheon_output:
         ts = process_pantheon_trace(args.trace)
@@ -96,4 +97,4 @@ if __name__ == '__main__':
     # Generate a trimmed oracle trace from an oracle trace
     elif not args.trace.endswith('.pcap') and args.oracle_output:
         ts = process_oracle_trace(args.trace)
-        generate_oracle_trace(ts, args.oracle_output)
+        store_trace(args.oracle_output, ts)
