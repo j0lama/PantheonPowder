@@ -306,6 +306,34 @@ static u64 trace_to_bw(u32 mtu, u64 trace)
 	return trace;
 }
 
+/* Multi Flow support */
+/* Divide the maximum throughput among the number of active connections
+ * We keep a list of the 'open' connections ('open' as of the FSM in RFC793).
+ */
+
+#define MAX_NUM_FLOWS 3
+
+struct multi_flow {
+	struct tcp_sock * flows[MAX_NUM_FLOWS];
+	u32 active_flows;
+	spinlock_t lock;
+};
+
+struct multi_flow flows;
+
+static void multi_flows_init(struct multi_flows *flows)
+{
+	int i;
+	/* Initialize flows to NULL */
+	for(i = 0; i < MAX_NUM_FLOWS; i++)
+		flows->flows[i] = NULL;
+	spin_lock_init(&flows->lock);
+	flows->active_flows = 0;
+}
+
+//spin_lock(spinlock_t *lock)
+//spin_unlock(spinlock_t *lock)
+
 /*******************************************/
 /********* End of Oracle Extension *********/
 /*******************************************/
@@ -854,7 +882,7 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct bbr *bbr = inet_csk_ca(sk);
-	u64 bw, trace;
+	u64 bw;
 
 	bbr->round_start = 0;
 	if (rs->delivered < 0 || rs->interval_us <= 0)
@@ -870,26 +898,12 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 
 	bbr_lt_bw_sampling(sk, rs);
 
-	/* Get bw from trace */
-	trace = get_trace_bw(bbr);
-	bw = trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
-	latest_bw = bw;
-
-	/* Check if  */
-	//if(trace != 0 && bbr->mode == BBR_PROBE_BW) {
-	//	bw = trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
-	//	latest_bw = bw;
-	//	/* bw has to be scaled up (BBR_SCALE) and multiplied by 8 to get bits per second */
-	//	//printk_ratelimited(KERN_ALERT "%llu -> (%llu) -> %llu\n", trace, bw, bbr_rate_bytes_per_sec(sk, bw<<BBR_SCALE, 1)*8);
-	//}
-	//else {
-	//	/* Divide delivered by the interval to find a (lower bound) bottleneck
-	//	* bandwidth sample. Delivered is in packets and interval_us in uS and
-	//	* ratio will be <<1 for most connections. So delivered is first scaled.
-	//	* bw is in pkts/uS << 24
-	//	*/
-	//	bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
-	//}
+	/* Divide delivered by the interval to find a (lower bound) bottleneck
+	* bandwidth sample. Delivered is in packets and interval_us in uS and
+	* ratio will be <<1 for most connections. So delivered is first scaled.
+	* bw is in pkts/uS << 24
+	*/
+	bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
 
 	/* If this sample is application-limited, it is likely to have a very
 	 * low delivered count that represents application behavior rather than
@@ -1110,10 +1124,18 @@ static void bbr_main(struct sock *sk, const struct rate_sample *rs)
 {
 	struct bbr *bbr = inet_csk_ca(sk);
 	u32 bw;
+	u64 trace;
 
 	bbr_update_model(sk, rs);
-	bw = bbr_bw(sk);
-	bw = latest_bw;
+
+	/* Standard method to calculate BW */
+	//bw = bbr_bw(sk);
+
+	/* Get bw from trace (Oracle)*/
+	trace = get_trace_bw(bbr);
+	bw = (u32) trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
+
+
 	bbr_set_pacing_rate(sk, bw, bbr->pacing_gain);
 	bbr_set_tso_segs_goal(sk);
 	bbr_set_cwnd(sk, rs, rs->acked_sacked, bw, bbr->cwnd_gain);
