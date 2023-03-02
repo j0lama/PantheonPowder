@@ -314,25 +314,72 @@ static u64 trace_to_bw(u32 mtu, u64 trace)
 #define MAX_NUM_FLOWS 3
 
 struct multi_flow {
-	struct tcp_sock * flows[MAX_NUM_FLOWS];
+	struct sock * flows[MAX_NUM_FLOWS];
 	u32 active_flows;
 	spinlock_t lock;
 };
-
 struct multi_flow flows;
 
-static void multi_flows_init(struct multi_flows *flows)
+static void multi_flows_init(void)
 {
 	int i;
 	/* Initialize flows to NULL */
 	for(i = 0; i < MAX_NUM_FLOWS; i++)
-		flows->flows[i] = NULL;
-	spin_lock_init(&flows->lock);
-	flows->active_flows = 0;
+		flows.flows[i] = NULL;
+	spin_lock_init(&flows.lock);
+	flows.active_flows = 0;
 }
 
-//spin_lock(spinlock_t *lock)
-//spin_unlock(spinlock_t *lock)
+//spin_lock(&flows->lock)
+//spin_unlock(&flows->lock)
+
+static bool flow_closed(struct sock * sk)
+{
+	/* Check if the TCP is 'closed' (by checking the TCP state machine)*/
+	if((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_LAST_ACK | TCPF_CLOSING | TCPF_FIN_WAIT2))
+		return 1;
+	return 0;
+}
+
+static void check_flows(struct sock *sk, u64 * trace)
+{
+	int i = 0;
+	bool flag = 0;
+
+	printk_ratelimited(KERN_INFO "Flow %d: %d\n", sk->sk_hash, flows.active_flows);
+
+	spin_lock(&flows.lock);
+	/* Clean up the flow list */
+	for(i = 0; i < MAX_NUM_FLOWS; i++) {
+		if (flows.flows[i] == NULL)
+			continue;
+		else if (flows.flows[i]->sk_hash != sk->sk_hash)
+			flag = 1;
+		else if (flow_closed(flows.flows[i])) { /* If flow is available (Connection Closed)*/
+			flows.flows[i] = NULL;
+			flows.active_flows--;
+		}
+	}
+
+	/* If sk is not a registered flow, register it */
+	if(!flag) {
+		for(i = 0; i < MAX_NUM_FLOWS; i++) {
+			if(flows.flows[i] == NULL) {
+				flows.flows[i] = sk;
+				flows.active_flows++;
+				goto divice_bw;
+			}
+		}
+		/* If this section is executed, MAX_NUM_FLOWS has been reached and so the bw is 0 for the current flow */
+		*trace = 0;
+		spin_unlock(&flows.lock);
+		return;
+	}
+divice_bw:
+	do_div(*trace, flows.active_flows);
+	spin_unlock(&flows.lock);
+	return;
+}
 
 /*******************************************/
 /********* End of Oracle Extension *********/
@@ -882,7 +929,7 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct bbr *bbr = inet_csk_ca(sk);
-	u64 bw;
+	u64 bw, trace;
 
 	bbr->round_start = 0;
 	if (rs->delivered < 0 || rs->interval_us <= 0)
@@ -898,12 +945,18 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 
 	bbr_lt_bw_sampling(sk, rs);
 
+
+	/* Get bw from trace */
+	trace = get_trace_bw(bbr);
+	bw = trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
+	latest_bw = bw;
+
 	/* Divide delivered by the interval to find a (lower bound) bottleneck
 	* bandwidth sample. Delivered is in packets and interval_us in uS and
 	* ratio will be <<1 for most connections. So delivered is first scaled.
 	* bw is in pkts/uS << 24
 	*/
-	bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
+	//bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
 
 	/* If this sample is application-limited, it is likely to have a very
 	 * low delivered count that represents application behavior rather than
@@ -1124,16 +1177,12 @@ static void bbr_main(struct sock *sk, const struct rate_sample *rs)
 {
 	struct bbr *bbr = inet_csk_ca(sk);
 	u32 bw;
-	u64 trace;
 
 	bbr_update_model(sk, rs);
 
 	/* Standard method to calculate BW */
-	//bw = bbr_bw(sk);
-
-	/* Get bw from trace (Oracle)*/
-	trace = get_trace_bw(bbr);
-	bw = (u32) trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
+	bw = bbr_bw(sk);
+	bw = latest_bw;
 
 
 	bbr_set_pacing_rate(sk, bw, bbr->pacing_gain);
