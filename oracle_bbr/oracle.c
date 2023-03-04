@@ -311,10 +311,11 @@ static u64 trace_to_bw(u32 mtu, u64 trace)
  * We keep a list of the 'open' connections ('open' as of the FSM in RFC793).
  */
 
-#define MAX_NUM_FLOWS 3
+#define MAX_NUM_FLOWS 5
 
 struct multi_flow {
-	struct sock * flows[MAX_NUM_FLOWS];
+	u32 flow_id[MAX_NUM_FLOWS];
+	bool active[MAX_NUM_FLOWS];
 	u32 active_flows;
 	spinlock_t lock;
 };
@@ -324,61 +325,67 @@ static void multi_flows_init(void)
 {
 	int i;
 	/* Initialize flows to NULL */
-	for(i = 0; i < MAX_NUM_FLOWS; i++)
-		flows.flows[i] = NULL;
+	for(i = 0; i < MAX_NUM_FLOWS; i++) {
+		flows.flow_id[i] = 0;
+		flows.active[i] = false;
+	}
 	spin_lock_init(&flows.lock);
 	flows.active_flows = 0;
 }
 
-//spin_lock(&flows->lock)
-//spin_unlock(&flows->lock)
-
-static bool flow_closed(struct sock * sk)
+static void remove_flow(struct sock * sk)
 {
-	/* Check if the TCP is 'closed' (by checking the TCP state machine)*/
-	if((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_LAST_ACK | TCPF_CLOSING | TCPF_FIN_WAIT2))
-		return 1;
-	return 0;
+	int i;
+
+	spin_lock(&flows.lock);
+	for(i = 0; i < MAX_NUM_FLOWS; i++) {
+		/* Remove flow from the list */
+		if(flows.active[i] && flows.flow_id[i] == sk->sk_hash) {
+			flows.flow_id[i] = 0;
+			flows.active[i] = false;
+			flows.active_flows--;
+			break;
+		}
+	}
+	pr_info("[ORACLE] Socket %x destroy: %d active flows\n", sk->sk_hash, flows.active_flows);
+	spin_unlock(&flows.lock);
 }
 
 static void check_flows(struct sock *sk, u64 * trace)
 {
 	int i = 0;
-	bool flag = 0;
-
-	printk_ratelimited(KERN_INFO "Flow %d: %d\n", sk->sk_hash, flows.active_flows);
+	int idx = -1;
 
 	spin_lock(&flows.lock);
-	/* Clean up the flow list */
+	/* Check if the flow is registered */
 	for(i = 0; i < MAX_NUM_FLOWS; i++) {
-		if (flows.flows[i] == NULL)
-			continue;
-		else if (flows.flows[i]->sk_hash != sk->sk_hash)
-			flag = 1;
-		else if (flow_closed(flows.flows[i])) { /* If flow is available (Connection Closed)*/
-			flows.flows[i] = NULL;
-			flows.active_flows--;
+		/* If flow is registered,  */
+		if (flows.active[i] && flows.flow_id[i] == sk->sk_hash) {
+			goto divice_bw;
 		}
+		if(!flows.active[i])
+			idx = i;
 	}
 
-	/* If sk is not a registered flow, register it */
-	if(!flag) {
-		for(i = 0; i < MAX_NUM_FLOWS; i++) {
-			if(flows.flows[i] == NULL) {
-				flows.flows[i] = sk;
-				flows.active_flows++;
-				goto divice_bw;
-			}
-		}
-		/* If this section is executed, MAX_NUM_FLOWS has been reached and so the bw is 0 for the current flow */
-		*trace = 0;
-		spin_unlock(&flows.lock);
-		return;
+	/* New flow: register and calculate bw */
+	if(idx >= 0) {
+		pr_info("[ORACLE] New Flow: %x\n", sk->sk_hash);
+		sk->sk_destruct = remove_flow; /* Overwrite callback */
+		flows.active[idx] = true;
+		flows.flow_id[idx] = sk->sk_hash;
+		flows.active_flows++;
+		goto divice_bw;
 	}
+	/* If this section is executed, MAX_NUM_FLOWS has been reached and so the bw is 0 for the current flow */
+	*trace = 0;
+	pr_err("Flow error %d\n", sk->sk_hash);
+	goto terminate;
+
 divice_bw:
 	do_div(*trace, flows.active_flows);
+
+terminate:
 	spin_unlock(&flows.lock);
-	return;
 }
 
 /*******************************************/
@@ -705,10 +712,10 @@ done:
 		tp->snd_cwnd = min(tp->snd_cwnd, bbr_cwnd_min_target);
 	
 	/* If bw is zero, force cwnd to be 0 */
-	if(bw == 0)
+	if(bw == 0) {
+		printk_ratelimited(KERN_INFO "At idx (%d) cwnd is 0\n", idx);
 		tp->snd_cwnd = 0;
-	if (tp->snd_cwnd < 10)
-		printk_ratelimited(KERN_INFO "idx (%d): cwnd (%d)\n", idx, tp->snd_cwnd);
+	}		
 }
 
 /* End cycle phase if it's time and/or we hit the phase's in-flight target. */
@@ -948,6 +955,7 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
 
 	/* Get bw from trace */
 	trace = get_trace_bw(bbr);
+	check_flows(sk, &trace);
 	bw = trace_to_bw(tcp_mss_to_mtu(sk, tcp_sk(sk)->mss_cache), trace);
 	latest_bw = bw;
 
@@ -1182,7 +1190,8 @@ static void bbr_main(struct sock *sk, const struct rate_sample *rs)
 
 	/* Standard method to calculate BW */
 	bw = bbr_bw(sk);
-	bw = latest_bw;
+	bw = (u32) latest_bw;
+	
 
 
 	bbr_set_pacing_rate(sk, bw, bbr->pacing_gain);
@@ -1317,12 +1326,15 @@ static int __init bbr_register(void)
 	BUILD_BUG_ON(sizeof(struct bbr) > ICSK_CA_PRIV_SIZE);
 	/* Load trace */
 	load_trace();
+	/* Initialize multi-flow structure */
+	multi_flows_init();
 	return tcp_register_congestion_control(&tcp_bbr_cong_ops);
 }
 
 static void __exit bbr_unregister(void)
 {
 	tcp_unregister_congestion_control(&tcp_bbr_cong_ops);
+	pr_info("[ORACLE] Unloading oracle: %s (%d)\n\n", filename, lines);
 }
 
 module_init(bbr_register);
