@@ -5,6 +5,7 @@
 # bbr copa cubic ledbat sprout taova vegas verus vivace indigo oracle
 CC_SCHEMES="bbr oracle" #copa verus
 RUN_TIMES=1
+NUM_FLOWS=1
 
 if [ "$#" -gt 3 ] || [ "$#" -lt 1 ]; then
     echo "USE: $0 <Trace (PCAP or Pantheon)> <Destination IP (Only for PCAP)> <Oracle trace (optional)>"
@@ -90,7 +91,7 @@ rm -Rf $PANTHEON_OUTPUT_DIR 2> /dev/null
 mkdir $PANTHEON_OUTPUT_DIR
 
 cd pantheon/
-./src/experiments/test.py local --schemes "$CC_SCHEMES" --uplink-trace $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE --data-dir $PANTHEON_OUTPUT_DIR --run-times $RUN_TIMES
+./src/experiments/test.py local --schemes "$CC_SCHEMES" --uplink-trace $BASE_DIR/tmp_pantheon_traces/$PANTHEON_TRACE --data-dir $PANTHEON_OUTPUT_DIR --run-times $RUN_TIMES -f $NUM_FLOWS
 
 # Analyze emulation
 ./src/analysis/analyze.py --data-dir $PANTHEON_OUTPUT_DIR
