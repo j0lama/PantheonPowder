@@ -311,7 +311,7 @@ static u64 trace_to_bw(u32 mtu, u64 trace)
  * We keep a list of the 'open' connections ('open' as of the FSM in RFC793).
  */
 
-#define MAX_NUM_FLOWS 5
+#define MAX_NUM_FLOWS 15
 
 struct multi_flow {
 	u32 flow_id[MAX_NUM_FLOWS];
