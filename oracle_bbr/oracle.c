@@ -370,7 +370,6 @@ static void check_flows(struct sock *sk, u64 * trace)
 	/* New flow: register and calculate bw */
 	if(idx >= 0) {
 		pr_info("[ORACLE] New Flow: %x\n", sk->sk_hash);
-		sk->sk_destruct = remove_flow; /* Overwrite callback */
 		flows.active[idx] = true;
 		flows.flow_id[idx] = sk->sk_hash;
 		flows.active_flows++;
@@ -1319,6 +1318,7 @@ static struct tcp_congestion_ops tcp_bbr_cong_ops __read_mostly = {
 	.tso_segs_goal	= bbr_tso_segs_goal,
 	.get_info	= bbr_get_info,
 	.set_state	= bbr_set_state,
+	.release = remove_flow, /* Multi-flow support */
 };
 
 static int __init bbr_register(void)
