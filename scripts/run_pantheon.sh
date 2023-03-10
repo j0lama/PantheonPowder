@@ -70,7 +70,7 @@ fi
 cd /local/repository/oracle_bbr/
 TRACE="/local/repository/oracle_bbr/oracle.trace"
 echo "[ORACLE] Deploying oracle using $TRACE"
-while [ "$(lsmod | grep oracle | awk '{print $3}')" == "1" ]; do
+while [ "$(lsmod | grep oracle | awk '{print $3}')" != "0" ]; do
     echo "Waiting to unload Oracle kernel module..."
     sleep 1
 done
